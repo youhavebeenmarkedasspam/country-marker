@@ -109,18 +109,18 @@
                             }
 
                             try {
-                                // Use a proxy to bypass CORS issues
-                                const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy URL
-                                const geocodeUrl = `https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(country.name)}&format=json`;
+                                // Use GeoCode API
+                                const geocodeUrl = `https://geocode.xyz/${encodeURIComponent(country.name)}?json=1&auth=your_api_key`;
 
-                                const response = await fetch(proxyUrl + geocodeUrl);
+                                const response = await fetch(geocodeUrl);
                                 if (!response.ok) {
                                     throw new Error(`Failed to fetch geocoding data for ${country.name}`);
                                 }
 
                                 const result = await response.json();
-                                if (result.length > 0) {
-                                    const { lat, lon } = result[0];
+                                if (result.latt && result.longt) {
+                                    const lat = result.latt;
+                                    const lon = result.longt;
                                     L.marker([lat, lon]).addTo(map).bindPopup(country.name);
                                 }
                             } catch (err) {
