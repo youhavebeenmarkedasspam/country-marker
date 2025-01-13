@@ -108,8 +108,8 @@
                                 return; // Skip countries with missing names
                             }
 
-                            // Use Nominatim API to geocode the country
                             try {
+                                // Use Nominatim API to geocode the country
                                 const response = await fetch(`https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(country.name)}&format=json`);
                                 if (!response.ok) {
                                     throw new Error(`Failed to fetch geocoding data for ${country.name}`);
@@ -118,17 +118,14 @@
                                 const result = await response.json();
                                 if (result.length > 0) {
                                     const { lat, lon } = result[0];
-                                    console.log(`Placing marker for: ${country.name} at ${lat}, ${lon}`);
                                     L.marker([lat, lon]).addTo(map).bindPopup(country.name);
-                                } else {
-                                    console.warn(`No results for ${country.name}`);
                                 }
-                            } catch (error) {
-                                console.error('Error fetching geocoding data:', error);
+                            } catch (err) {
+                                console.error(`Error fetching geocoding data for ${country.name}:`, err);
                             }
                         });
                     } catch (err) {
-                        console.error('Error:', err);
+                        console.error('Error loading markers:', err);
                     }
                 }
 
