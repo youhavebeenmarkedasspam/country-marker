@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Country Marker Submission</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Correct Supabase CDN link for version 2.0 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.0.0/dist/umd/supabase.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+        #map {
+            height: 500px;
+            width: 100%;
+            margin: 20px 0;
+        }
+        form {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Submit a Country</h1>
+    <form id="country-form">
+        <label for="country-dropdown">Select a Country:</label>
+        <select id="country-dropdown" name="country-dropdown">
+            <option value="">Select a country</option>
+        </select>
+        <button type="submit">Submit</button>
+    </form>
+    <div id="map"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Check if supabase is loaded
+            if (typeof supabase === 'undefined') {
+                console.error("Supabase client is NOT loaded correctly!");
+                return;
+            }
+
+            // Initialize Supabase client
+            const supabaseUrl = 'https://uqshfwxrrfkuanghcvzu.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVxc2hmd3hycmZrdWFuZ2hjdnp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3OTg0MDEsImV4cCI6MjA1MjM3NDQwMX0.fk73UESrFH0uls59D066wpwOGHwoSOlY6OqhEDGoK88';
+
+            try {
+                console.log("Initializing Supabase client...");
+                const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+                console.log("Supabase client initialized:", supabaseClient);
+
+                // Initialize the map
+                const map = L.map('map').setView([20, 0], 2);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18,
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                // Handle form submission
+                document.getElementById('country-form').addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const country = document.getElementById('country-dropdown').value;
+
+                    try {
+                        if (!country) {
+                            alert("Please select a country.");
+                            return;
+                        }
+
+                        // Add the country to Supabase
+                        const { data, error } = await supabaseClient
+                            .from('countries')
+                            .insert([{ name: country }]);
+
+                        if (error) {
+                            console.error('Error inserting country:', error);
+                            alert('Failed to add country. Please try again.');
+                        } else {
+                            alert('Country submitted successfully!');
+                            loadDropdown(); // Reload dropdown after country submission
+                            loadMarkers(); // Reload markers after submission
+                        }
+                    } catch (err) {
+                        console.error('Error:', err);
+                        alert('An unexpected error occurred.');
+                    }
+                });
+
+                // Load and display markers from Supabase
+                async function loadMarkers() {
+                    try {
+                        const { data: countries, error } = await supabaseClient
+                            .from('countries')
+                            .select('*');
+
+                        if (error) {
+                            console.error('Error fetching markers:', error);
+                            return;
+                        }
+
+                        countries.forEach(async (country) => {
+                            if (!country.name) {
+                                console.warn("Skipping country with missing name:", country);
+                                return; // Skip countries with missing names
+                            }
+
+                            // Use Nominatim API to geocode the country
+                            try {
+                                const response = await fetch(`https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(country.name)}&format=json`);
+                                if (!response.ok) {
+                                    throw new Error(`Failed to fetch geocoding data for ${country.name}`);
+                                }
+
+                                const result = await response.json();
+                                if (result.length > 0) {
+                                    const { lat, lon } = result[0];
+                                    console.log(`Placing marker for: ${country.name} at ${lat}, ${lon}`);
+                                    L.marker([lat, lon]).addTo(map).bindPopup(country.name);
+                                } else {
+                                    console.warn(`No results for ${country.name}`);
+                                }
+                            } catch (error) {
+                                console.error('Error fetching geocoding data:', error);
+                            }
+                        });
+                    } catch (err) {
+                        console.error('Error:', err);
+                    }
+                }
+
+                // Load dropdown options from Supabase
+                async function loadDropdown() {
+                    try {
+                        const { data: countries, error } = await supabaseClient
+                            .from('countries')
+                            .select('*');
+
+                        if (error) {
+                            console.error('Error fetching countries for dropdown:', error);
+                            return;
+                        }
+
+                        const dropdown = document.getElementById('country-dropdown');
+                        dropdown.innerHTML = '<option value="">Select a country</option>'; // Reset dropdown
+
+                        countries.forEach(country => {
+                            const option = document.createElement('option');
+                            option.value = country.name;
+                            option.textContent = country.name;
+                            dropdown.appendChild(option);
+                        });
+                    } catch (err) {
+                        console.error('Error:', err);
+                    }
+                }
+
+                loadMarkers(); // Load markers on map initialization
+                loadDropdown(); // Load dropdown options
+            } catch (error) {
+                console.error("Error initializing Supabase client:", error);
+            }
+        });
+    </script>
+</body>
+</html>
