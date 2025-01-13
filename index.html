@@ -109,8 +109,11 @@
                             }
 
                             try {
-                                // Use Nominatim API to geocode the country
-                                const response = await fetch(`https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(country.name)}&format=json`);
+                                // Use a proxy to bypass CORS issues
+                                const proxyUrl = 'https://cors-anywhere.herokuapp.com/'; // Proxy URL
+                                const geocodeUrl = `https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(country.name)}&format=json`;
+
+                                const response = await fetch(proxyUrl + geocodeUrl);
                                 if (!response.ok) {
                                     throw new Error(`Failed to fetch geocoding data for ${country.name}`);
                                 }
